@@ -1,0 +1,26 @@
+{
+    "name": "loongs/language",
+    "description": "loong-swoole i18n: translator with language packs (php / json, several directories, later ones override), Accept-Language negotiation with q-values and fallback chains (en-US → en → zh-CN), {name} placeholders, simple pluralization, missing-key reporting and a per-coroutine current locale (Swoole-safe); optional loongs/framework middleware and loongs/render adapter",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["i18n", "l10n", "translation", "translator", "locale", "accept-language", "language-pack", "swoole", "loongs"],
+    "require": {
+        "php": "^8.4"
+    },
+    "suggest": {
+        "ext-swoole": "Per-coroutine current locale (LocaleContext); without Swoole a process-local slot is used (CLI / FPM)",
+        "loongs/framework": "Integration\\Framework\\LocaleMiddleware: negotiate the request locale (query / Accept-Language), Content-Language + Vary headers",
+        "loongs/render": "Integration\\Render\\RenderTranslator: translate page descriptions (PageRegistry translator)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Loongs\\Language\\": "src/"
+        },
+        "files": ["src/functions.php"]
+    },
+    "scripts": {
+        "test": "php -d disable_functions= tests/language_test.php cli && php -d disable_functions= tests/language_test.php co"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
