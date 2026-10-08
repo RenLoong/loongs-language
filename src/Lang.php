@@ -18,7 +18,7 @@ final class Lang
         self::$translator = $translator;
     }
 
-    /** The default translator (an empty zh-CN one until setTranslator() is called). */
+    /** The default translator (an empty en-US one until setTranslator() is called). */
     public static function translator(): Translator
     {
         return self::$translator ??= new Translator();

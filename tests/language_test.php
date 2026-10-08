@@ -137,6 +137,28 @@ t('pluralization', function (): void {
 });
 
 // ---------------------------------------------------------------- catalog
+t('default fallback locale is en-US (no Accept-Language)', function (): void {
+    $t = new Translator();
+    eq('en-US', $t->fallback);
+    eq('en-US', $t->negotiate(null));
+    eq('en-US', $t->negotiate(''));
+    eq('en-US', $t->negotiate('fr-FR, de;q=0.8'));
+    eq('en-US', $t->locale());
+});
+t('placeholders: {name} replaced from the params array', function (): void {
+    $t = new Translator(new Catalog(['en-US' => ['welcome' => 'Hello, {name}', '已删除 {n} 条' => 'Deleted {n}']]), 'en-US');
+    eq('Hello, Ada', $t->get('welcome', ['name' => 'Ada']));
+    eq('Deleted 3', $t->get('已删除 {n} 条', ['n' => 3]));
+    eq('Hello, ', $t->get('welcome', ['name' => null]));
+    eq('welcome Ada', (new Translator())->get('welcome {name}', ['name' => 'Ada']));
+});
+t('locale directory: every php/json file, filename order, later overrides', function () use ($fx): void {
+    $c = Catalog::fromDirectories("{$fx}/order");
+    eq('from-c', $c->get('en-US', 'k'), 'a.php then b.php then c.json; later overrides');
+    eq('a', $c->get('en-US', 'only-a'));
+    eq('c', $c->get('en-US', 'only-c'));
+    eq('s', $c->get('en-US', 'only-single'), 'en-US.php is loaded before the directory and keeps keys the directory does not override');
+});
 t('catalog: directories merge, later override, php/json/sub-dirs, nested keys', function () use ($fx): void {
     $c = Catalog::fromDirectories("{$fx}/base", "{$fx}/app", "{$fx}/nested");
     eq(['en', 'en-US', 'ja', 'zh-CN'], $c->locales());

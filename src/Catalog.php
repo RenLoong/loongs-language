@@ -7,11 +7,17 @@ namespace Loongs\Language;
 use Loongs\Language\Exception\InvalidLanguagePack;
 
 /**
- * Language packs: locale → [key => message]. Sources, merged in the order added (later override):
+ * Language packs: locale → [key => message]. The directory name is the locale id
+ * (`lang/en-US/menu.php`, `lang/zh-CN/errors.json`, …). Sources merge in the order added
+ * (later overrides earlier):
  *   - arrays via add();
- *   - directories via addDirectory(): <dir>/<locale>.php (returns an array), <dir>/<locale>.json and
- *     <dir>/<locale>/*.php|json (merged in file-name order). Nested arrays are flattened with "." keys
- *     (['auth' => ['failed' => '…']] → "auth.failed"); a list is a plural message (forms joined by "|").
+ *   - directories via addDirectory(). Inside one directory, for each locale, files load in this
+ *     order (later overrides earlier): `<locale>.php`, then `<locale>.json`, then every
+ *     `<locale>/*.(php|json)` sorted by filename (byte order, so `a.php` before `b.php` before
+ *     `m.json`). Only that one level is read — nested subdirectories are not. A locale can also
+ *     be a single `<locale>.php` / `<locale>.json` file; those load before the directory's files.
+ * Nested arrays are flattened with "." keys (['auth' => ['failed' => '…']] → "auth.failed");
+ * a list is a plural message (forms joined by "|").
  * Directories are read lazily, once per locale and process (packs are read-only afterwards, so a
  * catalog is safe to share between coroutines).
  */

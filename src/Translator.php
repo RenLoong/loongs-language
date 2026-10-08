@@ -9,12 +9,12 @@ use Loongs\Language\Contract\TranslatorInterface;
 /**
  * Translator over a Catalog.
  *
- *   $t = new Translator(Catalog::fromDirectories(__DIR__ . '/lang', $app . '/lang'), fallback: 'zh-CN');
+ *   $t = new Translator(Catalog::fromDirectories(__DIR__ . '/lang', $app . '/lang'), fallback: 'en-US');
  *   LocaleContext::set($t->negotiate($request->header('accept-language')));
  *   $t->get('已删除 {n} 条', ['n' => 3]);              // en-US pack: "Deleted {n} items" → "Deleted 3 items"
  *   $t->choice('{count} item|{count} items', 2);
  *
- * Lookup for locale L walks Locale::chain(L, fallback) — e.g. en-US → en → zh-CN. With $sourceKeys
+ * Lookup for locale L walks Locale::chain(L, fallback) — e.g. fr-FR → fr → en-US (the default fallback). With $sourceKeys
  * (default) keys are texts in the fallback language ("gettext style"): a key missing from every pack
  * is returned as is and the fallback locale needs no pack at all. Keys looked up without a
  * translation in L (before reaching the fallback) are recorded in $missing.
@@ -31,7 +31,7 @@ final class Translator implements TranslatorInterface
      */
     public function __construct(
         public readonly Catalog $catalog = new Catalog(),
-        string $fallback = 'zh-CN',
+        string $fallback = 'en-US',
         ?array $supported = null,
         public readonly bool $sourceKeys = true,
         public readonly MissingTranslations $missing = new MissingTranslations(),

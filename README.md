@@ -5,7 +5,7 @@ Translations for loong-swoole apps (PHP 8.4, Swoole-safe):
 - **Translator** over language packs — php / json files from several directories, later directories
   override earlier ones (framework → package → app packs), nested keys, plural messages;
 - **Accept-Language negotiation** with q-values and primary-language matching, and **fallback chains**
-  (`en-US` → `en` → `zh-CN` → the key itself);
+  (default fallback `en-US`: `fr-FR` → `fr` → `en-US` → the key itself);
 - **{name} placeholders** and simple **pluralization** (`one|other`, `{0} …|{1} …|[2,*] …`);
 - **missing-key reporting** (bounded runtime recorder + `missingKeys()` for CI checks);
 - **per-coroutine current locale** (`LocaleContext`): each request coroutine has its own locale, child
@@ -19,20 +19,36 @@ composer require loongs/language
 
 ## Language packs
 
+The directory name **is** the locale id. Each locale directory holds as many php / json files as you
+want; they are merged.
+
 ```
 apps/Admin/lang/
-  zh-CN.php          <?php return ['auth' => ['failed' => '用户名或密码错误']];
-  en-US.php          <?php return ['保存' => 'Save', '已删除 {n} 条' => 'Deleted {n} items', 'auth' => ['failed' => 'Wrong username or password']];
-  en-US/menu.json    {"系统管理": "System"}
-  en.json            {"取消": "Cancel"}
+  en-US/                 locale id
+    menu.php             <?php return ['系统管理' => 'System'];
+    pages.php
+    errors.php           <?php return ['已删除 {n} 条' => 'Deleted {n} items'];
+    enums.php
+  zh-CN/
+    menu.php
+    errors.php
+  en.json                also accepted: a single <locale>.php / <locale>.json file
 ```
 
-- `<dir>/<locale>.php` (returns an array), `<dir>/<locale>.json`, `<dir>/<locale>/*.php|json`; file names
-  are matched case-insensitively (`en_us.php` works); missing directories are ignored.
+- **Merge order** (later overrides earlier): across directories, the order passed to
+  `Catalog::fromDirectories()`; inside one directory, `<locale>.php`, then `<locale>.json`, then every
+  file in `<locale>/` whose name ends in `.php` or `.json`, **sorted by filename** (`a.php` before
+  `b.php` before `m.json`). Names are matched case-insensitively (`en_us/menu.php` is `en-US`).
+  Nested subdirectories under a locale are not read. Missing directories are ignored.
 - Nested arrays become dotted keys (`auth.failed`); a list is a plural message (`['{count} item', '{count} items']`).
-- Keys are usually **source-language texts** ("gettext style": `__('保存')`), so the source locale needs
-  no pack and untranslated texts show the source. Symbolic keys (`auth.failed`) work too; put them in
-  the source pack as well (or use `sourceKeys: false` to report them as missing there).
+- Keys are usually **source texts** ("gettext style": `__('保存')`). The **default fallback locale is
+  `en-US`**: a request with no `Accept-Language` (and no current locale) is English, and a key missing
+  from every pack is returned unchanged. Give `zh-CN` its own files when the keys are not already the
+  Chinese text you want to show. Symbolic keys (`auth.failed`) work too (`sourceKeys: false` reports
+  them as missing in the fallback locale as well).
+- **Placeholders.** `__($key, ['name' => $n])`, `Lang::get()` and `$translator->get()` replace `{name}`
+  in the message (the same syntax; there is no separate `trans()`). `null` becomes an empty string.
+  Plurals: `trans_choice($key, $count, $params)`.
 - Directories are read lazily once per locale and process; a `Catalog` is read-only afterwards and safe
   to share between coroutines (`reload()` in development).
 
@@ -41,16 +57,16 @@ use Loongs\Language\{Catalog, Lang, LocaleContext, Translator};
 
 $translator = new Translator(
     Catalog::fromDirectories(__DIR__ . '/lang', ...glob($appsDir . '/*/lang', GLOB_ONLYDIR)),
-    fallback: 'zh-CN',                 // source / fallback locale
-    supported: ['en-US'],              // optional: default = fallback + every locale with a pack
+    // fallback defaults to 'en-US'
+    supported: ['zh-CN'],              // optional: default = fallback + every locale with a pack
 );
 Lang::setTranslator($translator);       // for __() / trans_choice() / Lang::get()
 
-LocaleContext::set($translator->negotiate('en-GB,en;q=0.9,zh;q=0.5'));   // → en-US
-__('保存');                                   // Save
-__('已删除 {n} 条', ['n' => 3]);              // Deleted 3 items
-trans_choice('{count} 条消息', 2);             // 2 messages
-$translator->get('auth.failed', locale: 'fr'); // 用户名或密码错误 (fallback)
+LocaleContext::set($translator->negotiate(null));                 // no Accept-Language → en-US
+__('保存');                                                        // Save (from en-US/menu.php)
+__('已删除 {n} 条', ['n' => 3]);                                   // Deleted 3 items
+$translator->get('welcome', ['name' => 'Ada']);                    // "Hello, {name}" → "Hello, Ada"
+trans_choice('{count} 条消息', 2);                                  // 2 messages
 ```
 
 ## Locale negotiation
@@ -59,7 +75,7 @@ $translator->get('auth.failed', locale: 'fr'); // 用户名或密码错误 (fall
 order (q=0 dropped, `*` = default); per tag an exact match, then a supported truncation (`en-AU` →
 `en`), then the first supported tag with the same primary language (`en` → `en-US`, `zh-TW` →
 `zh-CN`). `Locale::normalize()` canonicalises tags (`en_us` → `en-US`, `zh-hans-cn` → `zh-Hans-CN`),
-`Locale::chain('en-US', 'zh-CN')` gives `['en-US', 'en', 'zh-CN', 'zh']`.
+`Locale::chain('zh-CN', 'en-US')` gives `['zh-CN', 'zh', 'en-US', 'en']`. `new Translator()` falls back to `en-US`.
 
 ## Current locale (Swoole-safe)
 
